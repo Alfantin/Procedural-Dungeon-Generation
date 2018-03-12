@@ -1,0 +1,191 @@
+<html>
+<head>
+    <title>Prosedürel Zindan Jeneratör</title>
+</head>
+<body style="margin:0;">
+<canvas id="canvas"></canvas>
+<script type="text/javascript">
+
+    //canvas hazırla
+    var canvas = document.getElementById("canvas");
+    var ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    function random(min, max) {
+        return Math.floor(Math.random() * (max - min + 1) + min);
+    }
+
+    //HARİTA
+
+    function Harita(hucreEbat) {
+
+        //ekrana kaçtane hücre sığar hesapla
+        this.hucreEbat = hucreEbat;
+        this.genislik = Math.floor(canvas.width / hucreEbat);
+        this.yukseklik = Math.floor(canvas.height / hucreEbat);
+
+        //hücreleri oluştur
+        this.data = new Array(this.genislik);
+        for (var x = 0; x < this.genislik; x++) {
+            this.data[x] = new Array(this.yukseklik);
+        }
+
+    }
+
+    //hücre değeri okur
+    Harita.prototype.oku = function (x, y) {
+        if (x < 0 || y < 0 || x >= this.genislik || y >= this.yukseklik) return false; //harita dışı
+        return this.data[x][y];
+    };
+
+    //hücre değerini değiştirir
+    Harita.prototype.yaz = function (x, y, deger) {
+        if (x < 0 || y < 0 || x >= this.genislik || y >= this.yukseklik) return; //harita dışı
+        this.data[x][y] = deger;
+    };
+
+    //haritayı ekrana basar
+    Harita.prototype.goruntule = function () {
+        ctx.fillStyle = '#0c0e0f';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        for (var x = 0; x < this.genislik; x++) {
+            for (var y = 0; y < this.yukseklik; y++) {
+
+                //mağra
+                if (this.oku(x, y)) {
+                    ctx.fillStyle = '#2a343d';
+                }
+
+                //duvar
+                else if (this.oku(x - 1, y) || this.oku(x, y - 1) || this.oku(x + 1, y) || this.oku(x, y + 1)) {
+                    ctx.fillStyle = '#394c5e';
+                }
+
+                //kaya
+                else {
+                    ctx.fillStyle = '#0c0e0f';
+                }
+
+                ctx.globalAlpha = x % 2 != y % 2 || 0.90; //karo
+                ctx.fillRect(x * this.hucreEbat, y * this.hucreEbat, this.hucreEbat, this.hucreEbat);
+
+            }
+        }
+    }
+
+    //ZİNDAN ÜRETİCİ
+
+    function ZindanUretici(hucreEbat, bolgeSayisiX, bolgeSayisiY) {
+        this.hucreEbat = hucreEbat;
+        this.bolgeSayisiX = bolgeSayisiX;
+        this.bolgeSayisiY = bolgeSayisiY;
+    }
+
+    ZindanUretici.prototype.uret = function () {
+
+        //yeni harita oluştur
+        var harita = new Harita(this.hucreEbat);
+
+        //odaların daha düzenli yerleşmesi için haritayı bölgelere böl
+        var satirEbat = Math.floor(harita.genislik / this.bolgeSayisiX);
+        var sutunEbat = Math.floor(harita.yukseklik / this.bolgeSayisiY);
+
+        //odaları oluştur
+        var odalar = [];
+        for (var satir = 0; satir < this.bolgeSayisiX; satir++) {
+            for (var sutun = 0; sutun < this.bolgeSayisiY; sutun++) {
+
+                //%50 olasılıklı bu bölgede oda olup olmayacağına karar ver
+                if (Math.random() < 0.5) continue;
+
+                //oda oluştur
+                var oda = {};
+                odalar.push(oda);
+
+                //rasgele oda büyüklüğü 
+                oda.ebatX = random(satirEbat / 2, satirEbat);
+                oda.ebatY = random(sutunEbat / 2, sutunEbat);
+
+                //oda koordinatlarını hesapla
+                oda.x1 = (satir * satirEbat) + Math.floor((satirEbat - oda.ebatX) / 2);
+                oda.y1 = (sutun * sutunEbat) + Math.floor((sutunEbat - oda.ebatY) / 2);
+                oda.x2 = oda.x1 + oda.ebatX;
+                oda.y2 = oda.y1 + oda.ebatY;
+                oda.merkezX = Math.floor((oda.x1 + oda.x2) / 2.0);
+                oda.merkezY = Math.floor((oda.y1 + oda.y2) / 2.0);
+
+                //odanın şeklini oluştur
+                if (Math.random() > 0.3) {
+
+                    //dörtgen oda
+                    for (var x = oda.x1; x <= oda.x2; x++) {
+                        for (var y = oda.y1; y <= oda.y2; y++) {
+                            harita.yaz(x, y, (x > oda.x1 && y > oda.y1 && x < oda.x2 && y < oda.y2));
+                        }
+                    }
+
+                }
+                else {
+
+                    //oval oda
+                    var yariCapX = Math.floor(oda.ebatX / 2.0);
+                    var yariCapY = Math.floor(oda.ebatY / 2.0);
+                    var boy = yariCapX * yariCapY;
+                    for (var x = -yariCapX; x <= yariCapX; x++) {
+                        for (var y = -yariCapY; y <= yariCapY; y++) {
+                            harita.yaz(oda.x1 + x + yariCapX, oda.y1 + y + yariCapY, (x * x + y * y) <= boy);
+                        }
+                    }
+                }
+
+            }
+        }
+
+        //kooridorları oluştur
+        for (var i = 1; i < odalar.length; i++) {
+
+            //kooridor yönünü belirle
+            if (Math.random() > 0.5) {
+                a = odalar[i];
+                b = odalar[i - 1];
+            }
+            else {
+                a = odalar[i - 1];
+                b = odalar[i];
+            }
+
+            //yatay koridor oluştur
+            var koridorGenislik = 1;
+            for (var x = Math.min(a.merkezX, b.merkezX) - koridorGenislik; x <= Math.max(a.merkezX, b.merkezX) + koridorGenislik; x++) {
+                if (!harita.oku(x, a.merkezY)) {
+                    for (var k = -koridorGenislik; k <= koridorGenislik; k++) {
+                        harita.yaz(x, a.merkezY + k, true);
+                    }
+                }
+            }
+
+            //dikey koridor oluştur
+            for (var y = Math.min(a.merkezY, b.merkezY) - koridorGenislik; y <= Math.max(a.merkezY, b.merkezY) + koridorGenislik; y++) {
+                if (!harita.oku(b.merkezX, y)) {
+                    for (var k = -koridorGenislik; k <= koridorGenislik; k++) {
+                        harita.yaz(b.merkezX + k, y, true);
+                    }
+                }
+            }
+
+        }
+
+        //haritayı döndür
+        return harita;
+
+    }
+
+    //TEST
+    var zindan = new ZindanUretici(12, 3, 3);
+    var harita = zindan.uret();
+    harita.goruntule();
+
+</script>
+</body>
+</html>
